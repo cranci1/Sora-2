@@ -382,7 +382,7 @@ struct MediaSection: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(title)
-                    .font(.title2)
+                    .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
