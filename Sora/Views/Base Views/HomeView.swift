@@ -159,7 +159,8 @@ struct HomeView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.2))
+                        .background(Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.5))
+                        .background(.ultraThinMaterial)
                         .clipShape(Capsule())
                     
                     if (hero.voteAverage ?? 0.0) > 0 {
@@ -175,7 +176,8 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.3))
+                        .background(Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.5))
+                        .background(.ultraThinMaterial)
                         .clipShape(Capsule())
                     }
                 }
