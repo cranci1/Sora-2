@@ -2,21 +2,51 @@
 //  NetworkFetch.swift
 //  Sora
 //
-//  Created by Mac on 17/08/2025.
+//  Created by paul on 17/08/2025.
 //
 
-import WebKit
+import SoraCore
 import JavaScriptCore
+import WebKit
+import SwiftUI
+
+struct NetworkFetchOptions {
+    let timeoutSeconds: Int
+    let headers: [String: String]
+    let cutoff: String?
+    let returnHTML: Bool
+    
+    init(timeoutSeconds: Int = 10, headers: [String: String] = [:], cutoff: String? = nil, returnHTML: Bool = false) {
+        self.timeoutSeconds = timeoutSeconds
+        self.headers = headers
+        self.cutoff = cutoff
+        self.returnHTML = returnHTML
+    }
+}
 
 extension JSContext {
     func setupNetworkFetch() {
-        let networkFetchNativeFunction: @convention(block) (String, Int, JSValue?, String?, JSValue, JSValue) -> Void = { urlString, timeoutSeconds, headers, cutoff, resolve, reject in
+        let networkFetchNativeFunction: @convention(block) (String, JSValue?, JSValue, JSValue) -> Void = { urlString, optionsValue, resolve, reject in
             DispatchQueue.main.async {
+                var options = NetworkFetchOptions()
+                
+                if let optionsDict = optionsValue?.toDictionary() {
+                    let timeoutSeconds = optionsDict["timeoutSeconds"] as? Int ?? 10
+                    let headers = optionsDict["headers"] as? [String: String] ?? [:]
+                    let cutoff = optionsDict["cutoff"] as? String
+                    let returnHTML = optionsDict["returnHTML"] as? Bool ?? false
+                    
+                    options = NetworkFetchOptions(
+                        timeoutSeconds: timeoutSeconds,
+                        headers: headers,
+                        cutoff: cutoff,
+                        returnHTML: returnHTML
+                    )
+                }
+                
                 NetworkFetchManager.shared.performNetworkFetch(
                     urlString: urlString,
-                    timeoutSeconds: timeoutSeconds,
-                    headers: headers,
-                    cutoff: cutoff,
+                    options: options,
                     resolve: resolve,
                     reject: reject
                 )
@@ -26,19 +56,49 @@ extension JSContext {
         self.setObject(networkFetchNativeFunction, forKeyedSubscript: "networkFetchNative" as NSString)
         
         let networkFetchDefinition = """
-            function networkFetch(url, timeoutSeconds = 10, headers = {}, cutoff = null) {
+            function networkFetch(url, options = {}) {
+                if (typeof options === 'number') {
+                    const timeoutSeconds = options;
+                    const headers = arguments[2] || {};
+                    const cutoff = arguments[3] || null;
+                    options = { timeoutSeconds, headers, cutoff };
+                }
+                
+                const finalOptions = {
+                    timeoutSeconds: options.timeoutSeconds || 10,
+                    headers: options.headers || {},
+                    cutoff: options.cutoff || null,
+                    returnHTML: options.returnHTML || false
+                };
+                
                 return new Promise(function(resolve, reject) {
-                    networkFetchNative(url, timeoutSeconds, headers, cutoff, function(result) {
+                    networkFetchNative(url, finalOptions, function(result) {
                         resolve({
                             url: result.originalUrl,
                             requests: result.requests,
+                            html: result.html || null,
                             success: result.success,
                             error: result.error || null,
                             totalRequests: result.requests.length,
                             cutoffTriggered: result.cutoffTriggered || false,
-                            cutoffUrl: result.cutoffUrl || null
+                            cutoffUrl: result.cutoffUrl || null,
+                            htmlCaptured: result.htmlCaptured || false
                         });
                     }, reject);
+                });
+            }
+            
+            function networkFetchWithHTML(url, timeoutSeconds = 10) {
+                return networkFetch(url, {
+                    timeoutSeconds: timeoutSeconds,
+                    returnHTML: true
+                });
+            }
+            
+            function networkFetchWithCutoff(url, cutoff, timeoutSeconds = 10) {
+                return networkFetch(url, {
+                    timeoutSeconds: timeoutSeconds,
+                    cutoff: cutoff
                 });
             }
             """
@@ -56,8 +116,8 @@ class NetworkFetchManager: NSObject, ObservableObject {
         super.init()
     }
     
-    func performNetworkFetch(urlString: String, timeoutSeconds: Int, headers: JSValue?, cutoff: String?, resolve: JSValue, reject: JSValue) {
-        Logger.shared.log("NetworkFetchManager: Starting fetch for \(urlString)", type: "Debug")
+    func performNetworkFetch(urlString: String, options: NetworkFetchOptions, resolve: JSValue, reject: JSValue) {
+        Logger.shared.log("NetworkFetchManager: Starting fetch for \(urlString) with options: returnHTML=\(options.returnHTML)", type: "Debug")
         
         let monitorId = UUID().uuidString
         let monitor = NetworkFetchMonitor()
@@ -65,9 +125,7 @@ class NetworkFetchManager: NSObject, ObservableObject {
         
         monitor.startMonitoring(
             urlString: urlString,
-            timeoutSeconds: timeoutSeconds,
-            headers: headers,
-            cutoff: cutoff
+            options: options
         ) { [weak self] result in
             Logger.shared.log("NetworkFetchManager: Fetch completed for \(urlString)", type: "Debug")
             
@@ -89,40 +147,78 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
     private var webView: WKWebView?
     private var completionHandler: (([String: Any]) -> Void)?
     private var timer: Timer?
+    private var options: NetworkFetchOptions?
     
     @Published private(set) var networkRequests: [String] = []
     @Published private(set) var statusMessage = "Initializing..."
     @Published private(set) var cutoffTriggered = false
     @Published private(set) var cutoffUrl: String? = nil
+    @Published private(set) var htmlContent: String? = nil
+    @Published private(set) var htmlCaptured = false
     
-    private var cutoffString: String? = nil
-    
-    func startMonitoring(urlString: String, timeoutSeconds: Int, headers: JSValue?, cutoff: String?, completion: @escaping ([String: Any]) -> Void) {
+    func startMonitoring(urlString: String, options: NetworkFetchOptions, completion: @escaping ([String: Any]) -> Void) {
+        self.options = options
         completionHandler = completion
         networkRequests.removeAll()
         cutoffTriggered = false
         cutoffUrl = nil
-        cutoffString = cutoff
-        statusMessage = "Loading URL for \(timeoutSeconds) seconds..."
+        htmlContent = nil
+        htmlCaptured = false
+        
+        if options.returnHTML {
+            statusMessage = "Loading URL for \(options.timeoutSeconds) seconds, will capture HTML at end..."
+        } else {
+            statusMessage = "Loading URL for \(options.timeoutSeconds) seconds..."
+        }
         
         guard let url = URL(string: urlString) else {
             completion([
                 "originalUrl": urlString,
                 "requests": [],
+                "html": nil,
                 "success": false,
-                "error": "Invalid URL format"
+                "error": "Invalid URL format",
+                "htmlCaptured": false
             ])
             return
         }
         
         setupWebView()
-        loadURL(url: url, headers: headers)
+        loadURL(url: url, headers: options.headers)
         
-        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(timeoutSeconds), repeats: false) { [weak self] _ in
-            self?.stopMonitoring(reason: "timeout")
+        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(options.timeoutSeconds), repeats: false) { [weak self] _ in
+            if options.returnHTML {
+                self?.captureHTMLThenComplete()
+            } else {
+                self?.stopMonitoring(reason: "timeout")
+            }
         }
         
-        Logger.shared.log("NetworkFetch started for: \(urlString) (timeout: \(timeoutSeconds)s)", type: "Debug")
+        Logger.shared.log("NetworkFetch started for: \(urlString) (timeout: \(options.timeoutSeconds)s, returnHTML: \(options.returnHTML))", type: "Debug")
+    }
+    
+    private func captureHTMLThenComplete() {
+        guard let webView = webView, let options = options, options.returnHTML else {
+            stopMonitoring(reason: "timeout")
+            return
+        }
+        
+        statusMessage = "Capturing HTML content before timeout..."
+        Logger.shared.log("NetworkFetch: Capturing HTML at timeout", type: "Debug")
+        
+        webView.evaluateJavaScript("document.documentElement.outerHTML") { [weak self] result, error in
+            DispatchQueue.main.async {
+                if let html = result as? String, error == nil {
+                    self?.htmlContent = html
+                    self?.htmlCaptured = true
+                    Logger.shared.log("NetworkFetch: HTML captured successfully (\(html.count) characters)", type: "Debug")
+                } else {
+                    Logger.shared.log("NetworkFetch: Failed to capture HTML: \(error?.localizedDescription ?? "Unknown error")", type: "Error")
+                }
+                
+                self?.stopMonitoring(reason: "timeout_with_html")
+            }
+        }
     }
     
     private func setupWebView() {
@@ -399,7 +495,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         webView?.customUserAgent = URLSession.randomUserAgent
     }
     
-    private func loadURL(url: URL, headers: JSValue?) {
+    private func loadURL(url: URL, headers: [String: String]) {
         guard let webView = webView else { return }
         
         addRequest(url.absoluteString)
@@ -415,13 +511,9 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         request.setValue("same-origin", forHTTPHeaderField: "Sec-Fetch-Site")
         request.setValue("navigate", forHTTPHeaderField: "Sec-Fetch-Mode")
         
-        if let headers = headers, !headers.isUndefined && !headers.isNull {
-            if let headersDict = headers.toDictionary() as? [String: String] {
-                for (key, value) in headersDict {
-                    request.setValue(value, forHTTPHeaderField: key)
-                    print("Custom header set: \(key): \(value)")
-                }
-            }
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+            print("Custom header set: \(key): \(value)")
         }
         
         if request.value(forHTTPHeaderField: "Referer") == nil {
@@ -451,7 +543,6 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         
         let jsInteraction = """
         setTimeout(function() {
-            // Try to find and click play buttons
             const playButtons = document.querySelectorAll('button, div, span, a').filter(function(el) {
                 const text = el.textContent || el.innerText || '';
                 const classes = el.className || '';
@@ -524,9 +615,11 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         let result: [String: Any] = [
             "originalUrl": webView?.url?.absoluteString ?? "",
             "requests": networkRequests,
+            "html": htmlContent as Any,
             "success": true,
             "cutoffTriggered": cutoffTriggered,
-            "cutoffUrl": cutoffUrl as Any
+            "cutoffUrl": cutoffUrl as Any,
+            "htmlCaptured": htmlCaptured
         ]
         
         webView = nil
@@ -534,6 +627,8 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         if cutoffTriggered {
             statusMessage = "Cutoff triggered! Found \(networkRequests.count) requests"
             Logger.shared.log("NetworkFetch stopped early due to cutoff: \(cutoffUrl ?? "unknown")", type: "Debug")
+        } else if htmlCaptured {
+            statusMessage = "HTML captured! Found \(networkRequests.count) requests"
         } else {
             statusMessage = "Completed! Found \(networkRequests.count) requests"
         }
@@ -541,7 +636,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         completionHandler?(result)
         completionHandler = nil
         
-        print("Monitoring stopped (\(reason)). Total requests: \(networkRequests.count)")
+        print("Monitoring stopped (\(reason)). Total requests: \(networkRequests.count), HTML captured: \(htmlCaptured)")
     }
     
     private func addRequest(_ urlString: String) {
@@ -550,7 +645,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
                 self.networkRequests.append(urlString)
                 print("Captured: \(urlString)")
                 
-                if let cutoff = self.cutoffString, !cutoff.isEmpty {
+                if let cutoff = self.options?.cutoff, !cutoff.isEmpty {
                     if urlString.lowercased().contains(cutoff.lowercased()) {
                         print("Cutoff triggered by: \(urlString)")
                         self.cutoffTriggered = true
