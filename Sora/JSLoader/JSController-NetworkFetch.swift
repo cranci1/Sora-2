@@ -5,10 +5,8 @@
 //  Created by paul on 17/08/2025.
 //
 
-import SoraCore
-import JavaScriptCore
 import WebKit
-import SwiftUI
+import JavaScriptCore
 
 struct NetworkFetchOptions {
     let timeoutSeconds: Int
@@ -175,7 +173,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
             completion([
                 "originalUrl": urlString,
                 "requests": [],
-                "html": nil,
+                "html": NSNull(),
                 "success": false,
                 "error": "Invalid URL format",
                 "htmlCaptured": false
@@ -513,7 +511,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
-            print("Custom header set: \(key): \(value)")
+            Logger.shared.log("Custom header set: \(key): \(value)")
         }
         
         if request.value(forHTTPHeaderField: "Referer") == nil {
@@ -526,7 +524,6 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
             ]
             let defaultReferer = randomReferers.randomElement() ?? "https://www.google.com/"
             request.setValue(defaultReferer, forHTTPHeaderField: "Referer")
-            print("Using default referer: \(defaultReferer)")
         }
         
         webView.load(request)
@@ -535,7 +532,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
             self.simulateUserInteraction()
         }
         
-        print("Started loading: \(url.absoluteString)")
+        Logger.shared.log("Started loading: \(url.absoluteString)")
     }
     
     private func simulateUserInteraction() {
@@ -546,7 +543,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
             const playButtons = document.querySelectorAll('button, div, span, a').filter(function(el) {
                 const text = el.textContent || el.innerText || '';
                 const classes = el.className || '';
-                return text.toLowerCase().includes('play') || 
+                return text.toLowerCase().includes('play') ||
                        classes.toLowerCase().includes('play') ||
                        el.getAttribute('aria-label')?.toLowerCase().includes('play');
             });
@@ -600,7 +597,7 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         
         webView.evaluateJavaScript(jsInteraction) { result, error in
             if let error = error {
-                print("JavaScript interaction error: \(error)")
+                Logger.shared.log("JavaScript interaction error: \(error)", type: "Error")
             }
         }
     }
@@ -612,13 +609,13 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
         webView?.stopLoading()
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: "networkLogger")
         
-        let result: [String: Any] = [
+        let result: [String: Any?] = [
             "originalUrl": webView?.url?.absoluteString ?? "",
             "requests": networkRequests,
-            "html": htmlContent as Any,
+            "html": htmlContent,
             "success": true,
             "cutoffTriggered": cutoffTriggered,
-            "cutoffUrl": cutoffUrl as Any,
+            "cutoffUrl": cutoffUrl,
             "htmlCaptured": htmlCaptured
         ]
         
@@ -633,21 +630,21 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
             statusMessage = "Completed! Found \(networkRequests.count) requests"
         }
         
-        completionHandler?(result)
+        completionHandler?(result as [String : Any])
         completionHandler = nil
         
-        print("Monitoring stopped (\(reason)). Total requests: \(networkRequests.count), HTML captured: \(htmlCaptured)")
+        Logger.shared.log("Monitoring stopped (\(reason)). Total requests: \(networkRequests.count), HTML captured: \(htmlCaptured)", type: "Debug")
     }
     
     private func addRequest(_ urlString: String) {
         DispatchQueue.main.async {
             if !self.networkRequests.contains(urlString) {
                 self.networkRequests.append(urlString)
-                print("Captured: \(urlString)")
+                Logger.shared.log("Captured: \(urlString)", type: "Debug")
                 
                 if let cutoff = self.options?.cutoff, !cutoff.isEmpty {
                     if urlString.lowercased().contains(cutoff.lowercased()) {
-                        print("Cutoff triggered by: \(urlString)")
+                        Logger.shared.log("Cutoff triggered by: \(urlString)", type: "Debug")
                         self.cutoffTriggered = true
                         self.cutoffUrl = urlString
                         self.stopMonitoring(reason: "cutoff")
@@ -660,12 +657,8 @@ class NetworkFetchMonitor: NSObject, ObservableObject {
 }
 
 extension NetworkFetchMonitor: WKNavigationDelegate {
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("WebView finished loading main document")
-    }
-    
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("WebView failed: \(error.localizedDescription)")
+        Logger.shared.log("WebView failed: \(error.localizedDescription)", type: "Error")
     }
     
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
