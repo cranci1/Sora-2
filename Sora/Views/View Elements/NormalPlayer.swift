@@ -9,6 +9,8 @@ import AVKit
 
 class NormalPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
     private var originalRate: Float = 1.0
+    private var timeObserverToken: Any?
+    private var currentMediaInfo: MediaInfo?
     
 #if os(iOS)
     private var holdGesture: UILongPressGestureRecognizer?
@@ -28,6 +30,17 @@ class NormalPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         player?.pause()
+        
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+    }
+    
+    deinit {
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+        }
     }
     
 #if os(iOS)
@@ -112,6 +125,55 @@ class NormalPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 #endif
         } catch {
             Logger.shared.log("Failed to set up AVAudioSession: \(error)")
+        }
+    }
+    
+    // MARK: - Progress Tracking
+    
+    func setupProgressTracking(for mediaInfo: MediaInfo) {
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+        }
+        
+        self.currentMediaInfo = mediaInfo
+        
+        guard let player = player else {
+            Logger.shared.log("No player available for progress tracking", type: "Warning")
+            return
+        }
+        
+        timeObserverToken = ProgressManager.shared.addPeriodicTimeObserver(to: player, for: mediaInfo)
+        seekToLastPosition(for: mediaInfo)
+    }
+    
+    private func seekToLastPosition(for mediaInfo: MediaInfo) {
+        let lastPlayedTime: Double
+        
+        switch mediaInfo {
+        case .movie(let id, let title):
+            lastPlayedTime = ProgressManager.shared.getMovieCurrentTime(movieId: id, title: title)
+            
+        case .episode(let showId, let seasonNumber, let episodeNumber):
+            lastPlayedTime = ProgressManager.shared.getEpisodeCurrentTime(showId: showId, seasonNumber: seasonNumber, episodeNumber: episodeNumber)
+        }
+        
+        if lastPlayedTime > 30 {
+            let progress = getProgressPercentage(for: mediaInfo)
+            if progress < 0.95 {
+                let seekTime = CMTime(seconds: lastPlayedTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+                player?.seek(to: seekTime)
+                Logger.shared.log("Resumed playback from \(Int(lastPlayedTime))s", type: "Progress")
+            }
+        }
+    }
+    
+    private func getProgressPercentage(for mediaInfo: MediaInfo) -> Double {
+        switch mediaInfo {
+        case .movie(let id, let title):
+            return ProgressManager.shared.getMovieProgress(movieId: id, title: title)
+            
+        case .episode(let showId, let seasonNumber, let episodeNumber):
+            return ProgressManager.shared.getEpisodeProgress(showId: showId, seasonNumber: seasonNumber, episodeNumber: episodeNumber)
         }
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SoraDecryption
 
 struct ServiceSetting {
     let key: String
@@ -110,10 +111,10 @@ class ServiceManager: ObservableObject {
             let metadata = try await downloadAndParseMetadata(from: jsonURL)
             
             await updateProgress(0.5, "Downloading JavaScript...")
-            let jsContent = try await downloadJavaScript(from: metadata.scriptUrl)
+            let scriptData = try await downloadJavaScript(from: metadata.scriptUrl)
             
             await updateProgress(0.8, "Saving files...")
-            let service = try await saveService(metadata: metadata, jsContent: jsContent, metadataUrl: jsonURL)
+            let service = try await saveService(metadata: metadata, scriptData: scriptData, metadataUrl: jsonURL)
             
             await MainActor.run {
                 self.services.append(service)
@@ -184,7 +185,72 @@ class ServiceManager: ObservableObject {
         await loadDefaultServices()
     }
     
-    // MARK: Search Methods
+    // MARK: - Script Loading Helper
+    
+    public func loadScriptContent(for service: Services) throws -> String {
+        let servicePath = servicesDirectory.appendingPathComponent(service.localPath)
+        
+        let scriptFileName = (service.metadata.encrypted == true) ? "script.sora" : "script.js"
+        let scriptPath = servicePath.appendingPathComponent(scriptFileName)
+        
+        guard FileManager.default.fileExists(atPath: scriptPath.path) else {
+            throw ServiceError.scriptNotFound
+        }
+        
+        if service.metadata.encrypted == true {
+            let encryptedData = try Data(contentsOf: scriptPath)
+            
+            guard let decryptedContent = SoraDecryption.decryptToString(data: encryptedData) else {
+                throw ServiceError.decryptionFailed
+            }
+            
+            Logger.shared.log("Successfully decrypted script for service: \(service.metadata.sourceName)", type: "ServiceManager")
+            return decryptedContent
+        } else {
+            return try String(contentsOf: scriptPath, encoding: .utf8)
+        }
+    }
+    
+    public func saveScriptContent(_ content: String, for service: Services) throws {
+        let servicePath = servicesDirectory.appendingPathComponent(service.localPath)
+        
+        let scriptFileName = (service.metadata.encrypted == true) ? "script.sora" : "script.js"
+        let scriptPath = servicePath.appendingPathComponent(scriptFileName)
+        
+        if service.metadata.encrypted == true {
+            guard let contentData = content.data(using: .utf8) else {
+                Logger.shared.log("Failed to convert content to data for service: \(service.metadata.sourceName)", type: "ServiceManager")
+                throw ServiceError.encryptionFailed
+            }
+            
+            guard let encryptedData = SoraDecryption.encrypt(data: contentData) else {
+                Logger.shared.log("Failed to encrypt content for service: \(service.metadata.sourceName)", type: "ServiceManager")
+                throw ServiceError.encryptionFailed
+            }
+            
+            try encryptedData.write(to: scriptPath)
+            Logger.shared.log("Successfully encrypted and saved content for service: \(service.metadata.sourceName)", type: "ServiceManager")
+        } else {
+            try content.write(to: scriptPath, atomically: true, encoding: .utf8)
+        }
+    }
+    
+    // MARK: - Encryption Utilities
+    
+    public static func encryptJavaScriptContent(_ content: String) -> Data? {
+        guard let contentData = content.data(using: .utf8) else {
+            Logger.shared.log("Failed to convert JavaScript content to data", type: "ServiceManager")
+            return nil
+        }
+        
+        return SoraDecryption.encrypt(data: contentData)
+    }
+    
+    public static func decryptJavaScriptContent(_ encryptedData: Data) -> String? {
+        return SoraDecryption.decryptToString(data: encryptedData)
+    }
+    
+    // MARK: - Search Methods
     func searchInActiveServices(query: String) async -> [(service: Services, results: [SearchItem])] {
         let activeServicesList = activeServices
         
@@ -264,16 +330,8 @@ class ServiceManager: ObservableObject {
     private func searchInService(service: Services, query: String) async -> [SearchItem] {
         let jsController = JSController()
         
-        let servicePath = servicesDirectory.appendingPathComponent(service.localPath)
-        let jsPath = servicePath.appendingPathComponent("script.js")
-        
-        guard FileManager.default.fileExists(atPath: jsPath.path) else {
-            Logger.shared.log("JavaScript file not found for service: \(service.metadata.sourceName)", type: "ServiceManager")
-            return []
-        }
-        
         do {
-            let jsContent = try String(contentsOf: jsPath, encoding: .utf8)
+            let jsContent = try loadScriptContent(for: service)
             jsController.loadScript(jsContent)
             
             return await withCheckedContinuation { continuation in
@@ -282,7 +340,7 @@ class ServiceManager: ObservableObject {
                 }
             }
         } catch {
-            Logger.shared.log("Failed to load JavaScript for service \(service.metadata.sourceName): \(error.localizedDescription)", type: "ServiceManager")
+            Logger.shared.log("Failed to load script for service \(service.metadata.sourceName): \(error.localizedDescription)", type: "ServiceManager")
             return []
         }
     }
@@ -319,7 +377,7 @@ class ServiceManager: ObservableObject {
         }
     }
     
-    private func downloadJavaScript(from urlString: String) async throws -> String {
+    private func downloadJavaScript(from urlString: String) async throws -> Data {
         guard let url = URL(string: urlString) else {
             throw ServiceError.invalidScriptURL
         }
@@ -331,14 +389,10 @@ class ServiceManager: ObservableObject {
             throw ServiceError.scriptDownloadFailed
         }
         
-        guard let jsContent = String(data: data, encoding: .utf8) else {
-            throw ServiceError.invalidScriptContent
-        }
-        
-        return jsContent
+        return data
     }
     
-    private func saveService(metadata: ServicesMetadata, jsContent: String, metadataUrl: String) async throws -> Services {
+    private func saveService(metadata: ServicesMetadata, scriptData: Data, metadataUrl: String) async throws -> Services {
         let tempServiceId = UUID()
         let serviceFolderName = "\(metadata.sourceName.replacingOccurrences(of: " ", with: "_"))_\(tempServiceId.uuidString.prefix(8))"
         let servicePath = servicesDirectory.appendingPathComponent(serviceFolderName)
@@ -348,8 +402,17 @@ class ServiceManager: ObservableObject {
         let jsonPath = servicePath.appendingPathComponent("metadata.json")
         try jsonData.write(to: jsonPath)
         
-        let jsPath = servicePath.appendingPathComponent("script.js")
-        try jsContent.write(to: jsPath, atomically: true, encoding: .utf8)
+        let scriptFileName = (metadata.encrypted == true) ? "script.sora" : "script.js"
+        let scriptPath = servicePath.appendingPathComponent(scriptFileName)
+        
+        if metadata.encrypted == true {
+            try scriptData.write(to: scriptPath)
+        } else {
+            guard let jsContent = String(data: scriptData, encoding: .utf8) else {
+                throw ServiceError.invalidScriptContent
+            }
+            try jsContent.write(to: scriptPath, atomically: true, encoding: .utf8)
+        }
         
         let serviceId = generateServiceUUID(from: metadata, folderName: serviceFolderName)
         
@@ -467,8 +530,8 @@ class ServiceManager: ObservableObject {
                     continue
                 }
                 
-                let jsContent = try await downloadJavaScript(from: metadata.scriptUrl)
-                let service = try await saveService(metadata: metadata, jsContent: jsContent, metadataUrl: serviceURL)
+                let scriptData = try await downloadJavaScript(from: metadata.scriptUrl)
+                let service = try await saveService(metadata: metadata, scriptData: scriptData, metadataUrl: serviceURL)
                 
                 await MainActor.run {
                     self.services.append(service)
@@ -492,36 +555,21 @@ class ServiceManager: ObservableObject {
     // MARK: - Service Settings
     
     func getServiceSettings(_ service: Services) -> [ServiceSetting] {
-        let servicePath = servicesDirectory.appendingPathComponent(service.localPath)
-        let jsPath = servicePath.appendingPathComponent("script.js")
-        
-        guard FileManager.default.fileExists(atPath: jsPath.path) else {
-            Logger.shared.log("JavaScript file not found for service: \(service.metadata.sourceName)", type: "ServiceManager")
-            return []
-        }
-        
         do {
-            let jsContent = try String(contentsOf: jsPath, encoding: .utf8)
+            let jsContent = try loadScriptContent(for: service)
             return parseSettingsFromJS(jsContent)
         } catch {
-            Logger.shared.log("Failed to read JavaScript file for service \(service.metadata.sourceName): \(error.localizedDescription)", type: "ServiceManager")
+            Logger.shared.log("Failed to load script for service \(service.metadata.sourceName): \(error.localizedDescription)", type: "ServiceManager")
             return []
         }
     }
     
     func updateServiceSettings(_ service: Services, settings: [ServiceSetting]) -> Bool {
-        let servicePath = servicesDirectory.appendingPathComponent(service.localPath)
-        let jsPath = servicePath.appendingPathComponent("script.js")
-        
-        guard FileManager.default.fileExists(atPath: jsPath.path) else {
-            Logger.shared.log("JavaScript file not found for service: \(service.metadata.sourceName)", type: "ServiceManager")
-            return false
-        }
-        
         do {
-            let jsContent = try String(contentsOf: jsPath, encoding: .utf8)
+            let jsContent = try loadScriptContent(for: service)
             let updatedJS = updateSettingsInJS(jsContent, with: settings)
-            try updatedJS.write(to: jsPath, atomically: true, encoding: .utf8)
+            try saveScriptContent(updatedJS, for: service)
+            
             Logger.shared.log("Successfully updated settings for service: \(service.metadata.sourceName)", type: "ServiceManager")
             return true
         } catch {
@@ -657,6 +705,9 @@ enum ServiceError: LocalizedError {
     case invalidJSON
     case invalidScriptContent
     case saveFailed
+    case scriptNotFound
+    case decryptionFailed
+    case encryptionFailed
     
     var errorDescription: String? {
         switch self {
@@ -674,6 +725,12 @@ enum ServiceError: LocalizedError {
             return "Invalid JavaScript content"
         case .saveFailed:
             return "Failed to save service files"
+        case .scriptNotFound:
+            return "Script file not found"
+        case .decryptionFailed:
+            return "Failed to decrypt script content"
+        case .encryptionFailed:
+            return "Failed to encrypt script content"
         }
     }
 }

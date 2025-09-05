@@ -74,7 +74,8 @@ struct MediaDetailView: View {
                 mediaTitle: searchResult.displayTitle,
                 originalTitle: romajiTitle,
                 isMovie: searchResult.isMovie,
-                selectedEpisode: selectedEpisodeForSearch
+                selectedEpisode: selectedEpisodeForSearch,
+                tmdbId: searchResult.id
             )
         }
     }

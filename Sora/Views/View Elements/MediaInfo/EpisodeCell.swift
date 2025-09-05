@@ -10,6 +10,7 @@ import Kingfisher
 
 struct EpisodeCell: View {
     let episode: TMDBEpisode
+    let showId: Int
     let progress: Double
     let isSelected: Bool
     let onTap: () -> Void
@@ -54,7 +55,7 @@ struct EpisodeCell: View {
                         VStack {
                             Spacer()
                             ProgressView(value: progress)
-                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
                                 .frame(height: 3)
                                 .padding(.horizontal, 4)
                                 .padding(.bottom, 4)
@@ -151,7 +152,7 @@ struct EpisodeCell: View {
                         VStack {
                             Spacer()
                             ProgressView(value: progress)
-                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
                                 .frame(height: 3)
                                 .padding(.horizontal, 4)
                                 .padding(.bottom, 4)
@@ -245,8 +246,13 @@ struct EpisodeCell: View {
                 Label("Play", systemImage: "play.fill")
             }
             
-            if progress > 0 && progress < 0.95 {
+            if progress < 0.95 {
                 Button(action: {
+                    ProgressManager.shared.markEpisodeAsWatched(
+                        showId: showId,
+                        seasonNumber: episode.seasonNumber,
+                        episodeNumber: episode.episodeNumber
+                    )
                     onMarkWatched()
                     isWatched = true
                 }) {
@@ -256,6 +262,11 @@ struct EpisodeCell: View {
             
             if progress > 0 {
                 Button(action: {
+                    ProgressManager.shared.resetEpisodeProgress(
+                        showId: showId,
+                        seasonNumber: episode.seasonNumber,
+                        episodeNumber: episode.episodeNumber
+                    )
                     onResetProgress()
                     isWatched = false
                 }) {
@@ -266,9 +277,10 @@ struct EpisodeCell: View {
     }
     
     private func loadEpisodeProgress() {
-        let savedProgress = UserDefaults.standard.double(forKey: "progress_\(episodeKey)")
-        let savedWatched = UserDefaults.standard.bool(forKey: "watched_\(episodeKey)")
-        
-        isWatched = savedWatched || progress >= 0.95
+        isWatched = ProgressManager.shared.isEpisodeWatched(
+            showId: showId,
+            seasonNumber: episode.seasonNumber,
+            episodeNumber: episode.episodeNumber
+        )
     }
 }

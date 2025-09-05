@@ -235,23 +235,6 @@ class TMDBService: ObservableObject {
         }
     }
     
-    // MARK: - Get Now Playing Movies
-    func getNowPlayingMovies(page: Int = 1) async throws -> [TMDBMovie] {
-        let urlString = "\(baseURL)/movie/now_playing?api_key=\(apiKey)&language=\(currentLanguage)&page=\(page)"
-        
-        guard let url = URL(string: urlString) else {
-            throw TMDBError.invalidURL
-        }
-        
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(TMDBMovieSearchResponse.self, from: data)
-            return response.results
-        } catch {
-            throw TMDBError.networkError(error)
-        }
-    }
-    
     // MARK: - Get Top Rated Movies
     func getTopRatedMovies(page: Int = 1) async throws -> [TMDBMovie] {
         let urlString = "\(baseURL)/movie/top_rated?api_key=\(apiKey)&language=\(currentLanguage)&page=\(page)"

@@ -6,7 +6,6 @@
 //
 
 import AVKit
-import UIKit
 import SwiftUI
 import Kingfisher
 
@@ -22,6 +21,7 @@ struct ModulesSearchResultsSheet: View {
     let originalTitle: String?
     let isMovie: Bool
     let selectedEpisode: TMDBEpisode?
+    let tmdbId: Int
     
     @Environment(\.presentationMode) var presentationMode
     @State private var moduleResults: [(service: Services, results: [SearchItem])] = []
@@ -775,19 +775,9 @@ struct ModulesSearchResultsSheet: View {
         streamFetchProgress = "Loading service: \(service.metadata.sourceName)"
         
         let jsController = JSController()
-        let servicePath = serviceManager.servicesDirectory.appendingPathComponent(service.localPath)
-        let jsPath = servicePath.appendingPathComponent("script.js")
-        
-        Logger.shared.log("JavaScript path: \(jsPath.path)", type: "Stream")
-        
-        guard FileManager.default.fileExists(atPath: jsPath.path) else {
-            Logger.shared.log("JavaScript file not found for service: \(service.metadata.sourceName)", type: "Error")
-            isFetchingStreams = false
-            return
-        }
         
         do {
-            let jsContent = try String(contentsOf: jsPath, encoding: .utf8)
+            let jsContent = try serviceManager.loadScriptContent(for: service)
             jsController.loadScript(jsContent)
             Logger.shared.log("JavaScript loaded successfully", type: "Stream")
             streamFetchProgress = "JavaScript loaded successfully"
@@ -1103,6 +1093,28 @@ struct ModulesSearchResultsSheet: View {
         playerVC.player = newPlayer
         self.playerViewController = playerVC
         
+        if let selectedResult = selectedResult {
+            let mediaInfo: MediaInfo
+            
+            if isMovie {
+                let movieId = extractMovieId(from: selectedResult)
+                mediaInfo = .movie(id: movieId, title: selectedResult.title)
+            } else if let episode = selectedEpisode {
+                let showId = extractShowId(from: selectedResult)
+                mediaInfo = .episode(showId: showId, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber)
+            } else {
+                Logger.shared.log("No episode selected for TV show", type: "Warning")
+                self.presentPlayer(playerVC: playerVC, newPlayer: newPlayer)
+                return
+            }
+            
+            playerVC.setupProgressTracking(for: mediaInfo)
+        }
+        
+        presentPlayer(playerVC: playerVC, newPlayer: newPlayer)
+    }
+    
+    private func presentPlayer(playerVC: NormalPlayer, newPlayer: AVPlayer) {
         DispatchQueue.main.async {
             guard let windowScene = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
@@ -1127,6 +1139,14 @@ struct ModulesSearchResultsSheet: View {
                 newPlayer.play()
             }
         }
+    }
+    
+    private func extractMovieId(from searchResult: SearchItem) -> Int {
+        return tmdbId
+    }
+    
+    private func extractShowId(from searchResult: SearchItem) -> Int {
+        return tmdbId
     }
     
     private func safeConvertToHeaders(_ value: Any?) -> [String: String]? {
