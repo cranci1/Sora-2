@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		046FB82D2E5218DC007A8EB6 /* JSController-NetworkFetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046FB82C2E5218C7007A8EB6 /* JSController-NetworkFetch.swift */; };
 		131A62002E51CCE9009CE905 /* FeaturedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131A61FF2E51CCE9009CE905 /* FeaturedCard.swift */; };
-		1331CA182E61E359005CDF10 /* SoraDecryption in Frameworks */ = {isa = PBXBuildFile; productRef = 1331CA172E61E359005CDF10 /* SoraDecryption */; };
 		13631B322E4F1A200035C39F /* ServiceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13631B312E4F1A200035C39F /* ServiceSettingsView.swift */; };
 		1375466D2E5F059A00B29944 /* ProgressManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1375466C2E5F059A00B29944 /* ProgressManager.swift */; };
 		13830AEC2E55BD9200B3CDE4 /* AlgorithmManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13830AEB2E55BD9200B3CDE4 /* AlgorithmManager.swift */; };
@@ -115,7 +114,6 @@
 			files = (
 				13E34D2A2E535CB500C7BF07 /* Kingfisher in Frameworks */,
 				13F072C32E4B2F8500EF90EB /* SoraCore in Frameworks */,
-				1331CA182E61E359005CDF10 /* SoraDecryption in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,7 +361,6 @@
 			packageProductDependencies = (
 				13F072C22E4B2F8500EF90EB /* SoraCore */,
 				13E34D292E535CB500C7BF07 /* Kingfisher */,
-				1331CA172E61E359005CDF10 /* SoraDecryption */,
 			);
 			productName = Sora;
 			productReference = 13F0725B2E4B2D3300EF90EB /* Sora.app */;
@@ -396,7 +393,6 @@
 			packageReferences = (
 				13F072C12E4B2F8500EF90EB /* XCRemoteSwiftPackageReference "SoraCore" */,
 				13E34D282E535CB500C7BF07 /* XCRemoteSwiftPackageReference "Kingfisher" */,
-				1331CA162E61E359005CDF10 /* XCRemoteSwiftPackageReference "SoraDecryption" */,
 			);
 			productRefGroup = 13F0725C2E4B2D3300EF90EB /* Products */;
 			projectDirPath = "";
@@ -616,7 +612,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = me.cranci.solar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -659,7 +655,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = me.cranci.solar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -697,14 +693,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		1331CA162E61E359005CDF10 /* XCRemoteSwiftPackageReference "SoraDecryption" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/cranci1/SoraDecryption";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
 		13E34D282E535CB500C7BF07 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher";
@@ -724,11 +712,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1331CA172E61E359005CDF10 /* SoraDecryption */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1331CA162E61E359005CDF10 /* XCRemoteSwiftPackageReference "SoraDecryption" */;
-			productName = SoraDecryption;
-		};
 		13E34D292E535CB500C7BF07 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 13E34D282E535CB500C7BF07 /* XCRemoteSwiftPackageReference "Kingfisher" */;

@@ -775,9 +775,19 @@ struct ModulesSearchResultsSheet: View {
         streamFetchProgress = "Loading service: \(service.metadata.sourceName)"
         
         let jsController = JSController()
+        let servicePath = serviceManager.servicesDirectory.appendingPathComponent(service.localPath)
+        let jsPath = servicePath.appendingPathComponent("script.js")
+        
+        Logger.shared.log("JavaScript path: \(jsPath.path)", type: "Stream")
+        
+        guard FileManager.default.fileExists(atPath: jsPath.path) else {
+            Logger.shared.log("JavaScript file not found for service: \(service.metadata.sourceName)", type: "Error")
+            isFetchingStreams = false
+            return
+        }
         
         do {
-            let jsContent = try serviceManager.loadScriptContent(for: service)
+            let jsContent = try String(contentsOf: jsPath, encoding: .utf8)
             jsController.loadScript(jsContent)
             Logger.shared.log("JavaScript loaded successfully", type: "Stream")
             streamFetchProgress = "JavaScript loaded successfully"

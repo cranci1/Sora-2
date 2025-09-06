@@ -24,7 +24,6 @@ struct ServicesMetadata: Codable, Hashable {
     let type: String?
     let novel: Bool?
     let settings: Bool?
-    let encrypted: Bool?
 
     struct Author: Codable, Hashable {
         let name: String
