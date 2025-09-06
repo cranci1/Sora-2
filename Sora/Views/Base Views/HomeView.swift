@@ -369,7 +369,7 @@ struct HomeView: View {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isLoading = false
-                    print("Error loading content: \(error)")
+                    Logger.shared.log("Error loading content: \(error)", type: "Error")
                 }
             }
         }
