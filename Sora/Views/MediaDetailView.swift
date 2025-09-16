@@ -98,6 +98,7 @@ struct MediaDetailView: View {
         }
         .sheet(isPresented: $showingSearchResults, onDismiss: {
             updateNextEpisodeToWatch()
+            progressResetTrigger = UUID()
         }) {
             ModulesSearchResultsSheet(
                 mediaTitle: searchResult.displayTitle,
