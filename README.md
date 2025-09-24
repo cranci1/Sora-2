@@ -1,13 +1,11 @@
 # Sora 2
-> Also known as Sulfur due to copyright considerations.
+> The sucessor of [Sora](https://github.com/cranci1/Sora)
 
 <div align="center"> 
 
-<img src="https://raw.githubusercontent.com/cranci1/Sora/refs/heads/main/assets/Sulfur.png" width="750px">
-
 [![Build and Release IPA](https://github.com/cranci1/Sora-2/actions/workflows/build.yml/badge.svg)](https://github.com/cranci1/Sora-2/actions/workflows/build.yml) [![Discord](https://img.shields.io/discord/1293430817841741899.svg?logo=discord&color=blue)](https://discord.gg/XR3SrmUbpd) [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20iPadOS%2015.0%2B%20%26%20macOS%2012.0%2B-red?logo=apple&logoColor=white)](https://img.shields.io/badge/Platform-iOS%20%7C%20iPadOS%2015.0%2B%20%26%20macOS%2012.0%2B-red?logo=apple&logoColor=white)
 
-**A modular media player for iOS and macOS, under the GPLv3.0 License.**
+**A modular media player for iOS, tvOS and macOS, under the GPLv3.0 License.**
 
 </div>
 
@@ -16,7 +14,7 @@
 - [Sora 2](#sora-2)
   - [Table of Contents](#table-of-contents)
   - [Why Sora 2?](#why-sora-2)
-  - [New Features](#new-features)
+  - [Features](#features)
   - [Installation](#installation)
   - [Frequently Asked Questions](#frequently-asked-questions)
   - [Acknowledgements](#acknowledgements)
@@ -27,22 +25,23 @@
     - [Services](#services)
 
 ## Why Sora 2?
-Sora 2 has been made to improve speed and stability over the old version, [Sora 1](https://github.com/cranci1/Sora) and have a better experience overall. <br>
-A new UI has also been made available for iOS 26 users, following the Liquid Glass design. 
+Sora 2 has been made to improve speed and stability over the old version, [Sora 1](https://github.com/cranci1/Sora) and have a better experience overall. 
 
-## New Features
+## Features
 
-- [x] iOS/iPadOS 26 Liquid Glass UI
-- [x] Better TMDB integration
+- [x] TMDB integration
+- [x] tvOS 17+ support
+- [ ] macOS 13+ support
+- [x] iOS & iPadOS 15+ support
 - [x] Customizable Home Sections
-- [x] Better Search Matching Algorithms
-- [x] Bookmarks for Favorite Movies
-- [x] Collections to organize media
-- [ ] More features (Coming Soon...)
+- [x] Bookmarks & Collections for Media Items
+- [x] Support for personal media servers (Jellyfin, Emby)
+- [x] Background playback and Picture-in-Picture (PiP) support
+- [x] External media player support (VLC, Infuse, Outplayer, nPlayer, SenPlayer, VidHub, TracyPlayer)
 
 ## Installation
 
-You can download Sora 2 using Xcode or using the .ipa file, which you can find in the [Nightly](https://nightly.link/cranci1/Sora-2/workflows/build/dev/Sulfur-IPA.zip) build page.
+You can download Sora 2 using Xcode or using the .ipa file, which you can find in the [Nightly](https://nightly.link/cranci1/Sora-2/workflows/build/main/Sora%20IPA.zip) build page.
 
 ## Frequently Asked Questions
 
@@ -58,33 +57,14 @@ You can download Sora 2 using Xcode or using the .ipa file, which you can find i
 4. **How can I get Services?**  
    Sora 2 does not include any Services by default. You will need to find and add the necessary Services yourself, or create your own.
 
-5. **How do I add Services?**  
-   You'll need to paste the link of the service in the search bar. 
-
 ## Acknowledgements
 
 Frameworks:
-- [Drops](https://github.com/omaralbeik/Drops) – MIT License  
-- [NukeUI](https://github.com/kean/NukeUI) – MIT License  
 - [SoraCore](https://github.com/cranci1/SoraCore) – Custom License  
-- [MarqueeLabel](https://github.com/cbpowell/MarqueeLabel) – MIT License  
 
 Misc:
 - [50/50](https://github.com/50n50) for the app icon  
 - [Ciro](https://github.com/CiroHoodLove) for the episode banners  
-
-Translators:
-- [paul](https://github.com/50n50) – Dutch  
-- Utopia – Bosnian  
-- simplymox – Italian  
-- [ibro](https://github.com/xibrox) – Russian, Czech, Kazakh  
-- [Ciro](https://github.com/CiroHoodLove) – Arabic, French  
-- [storm](https://github.com/stormfjeld) – Norwegian, Swedish  
-- VastSector0 – Spanish  
-- [Seiike](https://github.com/Seeike) – Slovak  
-- [Cufiy](https://github.com/JMcrafter26) – German  
-- yoshi1780 – Mongolian  
-- Perju – Romanian  
 
 
 ## License
@@ -122,4 +102,3 @@ The developers assume no responsibility for user actions or content. This softwa
 
 ### Services
 Sora 2 does not include any Services. Third-party Services are the responsibility of their creators, not the Sora 2 developers.
-
