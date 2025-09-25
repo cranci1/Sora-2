@@ -1,6 +1,4 @@
 # Sora 2
-> The sucessor of [Sora](https://github.com/cranci1/Sora)
-
 <div align="center"> 
 
 [![Build and Release IPA](https://github.com/cranci1/Sora-2/actions/workflows/build.yml/badge.svg)](https://github.com/cranci1/Sora-2/actions/workflows/build.yml) [![Discord](https://img.shields.io/discord/1293430817841741899.svg?logo=discord&color=blue)](https://discord.gg/XR3SrmUbpd) [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20iPadOS%2015.0%2B%20%26%20macOS%2012.0%2B-red?logo=apple&logoColor=white)](https://img.shields.io/badge/Platform-iOS%20%7C%20iPadOS%2015.0%2B%20%26%20macOS%2012.0%2B-red?logo=apple&logoColor=white)
@@ -11,18 +9,13 @@
 
 ## Table of Contents
 
-- [Sora 2](#sora-2)
-  - [Table of Contents](#table-of-contents)
-  - [Why Sora 2?](#why-sora-2)
-  - [Features](#features)
-  - [Installation](#installation)
-  - [Frequently Asked Questions](#frequently-asked-questions)
-  - [Acknowledgements](#acknowledgements)
-  - [License](#license)
-  - [Legal](#legal)
-    - [User Responsibility](#user-responsibility)
-    - [No Liability](#no-liability)
-    - [Services](#services)
+- [Why Sora 2?](#why-sora-2)
+- [Features](#features)
+- [Installation](#installation)
+- [Frequently Asked Questions](#frequently-asked-questions)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+- [Legal](#legal)
 
 ## Why Sora 2?
 Sora 2 has been made to improve speed and stability over the old version, [Sora 1](https://github.com/cranci1/Sora) and have a better experience overall. 
@@ -65,7 +58,6 @@ Frameworks:
 Misc:
 - [50/50](https://github.com/50n50) for the app icon  
 - [Ciro](https://github.com/CiroHoodLove) for the episode banners  
-
 
 ## License
 
